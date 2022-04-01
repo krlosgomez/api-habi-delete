@@ -23,4 +23,8 @@ export class OwnersService {
     return await this.ownerRepository.findOne(id.toString());
   }
 
+  async delete(id: UniqueId) {
+    return await this.ownerRepository.delete(id.toString());
+  }
+
 }

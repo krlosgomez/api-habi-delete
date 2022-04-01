@@ -1,12 +1,12 @@
+import { UniqueId } from './../shared/validations/uniqueId';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindConditions, FindManyOptions, ILike, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 
-/* Dtos */
-import { FindApartmentDto } from './dto/find-apartment.dto';
-import { ListApartmentDto } from './dto/list-apartments.dto';
 /* Entities */
 import { Apartment } from './entities/apartment.entity';
+import ValidationException from 'src/shared/validations/validationError';
+import { OwnersService } from './infrastructure/owner/owners.service';
 
 @Injectable()
 export class ApartmentsService {
@@ -14,38 +14,21 @@ export class ApartmentsService {
   constructor(
     @InjectRepository(Apartment)
     private apartmentRepository: Repository<Apartment>,
+    private ownersService: OwnersService
   ) { }
 
-  async findAll(params: FindApartmentDto): Promise<ListApartmentDto> {
-
-    const where: FindConditions<Apartment> = {};
-    if (params.location) {
-      where.location = ILike(`%${params.location}%`);
+  async delete(id: UniqueId) {
+    const apartment: Apartment[] = await this.apartmentRepository.find({ where: { id: id.toString() }, loadRelationIds: true });
+    if (apartment.length > 0) {
+      await this.apartmentRepository.delete(id.toString());
+      const apartmentsFound = await this.apartmentRepository.find({ where: { owner: apartment[0].owner } });
+      if (apartmentsFound.length === 0 && apartment[0].owner) {
+        await this.ownersService.delete(new UniqueId(apartment[0].owner));
+      }
+      return true;
+    } else {
+      throw new ValidationException("No existe el apartamento.")
     }
-    if (params.created_at) {
-      where.created_at = params.created_at;
-    }
-    const options: FindManyOptions<Apartment> = {
-      where,
-      order: { created_at: params.order },
-      take: params.limit,
-      skip: params.limit * (params.page - 1),
-      loadRelationIds: true
-    };
-
-    const [apartmentsFound, total] = await this.apartmentRepository.findAndCount(options);
-    const pages = total % params.limit > 0 ? Math.trunc(total / params.limit) + 1 : Math.trunc(total / params.limit);
-    return {
-      apartments: apartmentsFound,
-      page: parseInt(params.page.toString(), 10),
-      pages,
-      total: total,
-      limit: parseInt(params.limit.toString(), 10)
-    };
-  }
-
-  async findOne(id: string) {
-    return await this.apartmentRepository.findOne(id);
   }
 
 }

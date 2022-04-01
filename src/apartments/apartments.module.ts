@@ -10,10 +10,11 @@ import { ApartmentsController } from './apartments.controller';
 /* Entities */
 import { Apartment } from './entities/apartment.entity';
 import { Owner } from './infrastructure/owner/owner.entity';
+import { OwnersService } from './infrastructure/owner/owners.service';
 
 @Module({
   controllers: [ApartmentsController],
-  providers: [ApartmentsService],
+  providers: [ApartmentsService, OwnersService],
   imports: [
     TypeOrmModule.forFeature([Apartment, Owner]),
     TypeOrmModule.forRoot({
